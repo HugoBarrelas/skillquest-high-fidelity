@@ -255,6 +255,60 @@ function challengeObjectives(challenge) {
   ];
 }
 
+function challengeBrief(challenge) {
+  const briefs = {
+    "Design Logo": {
+      context: "Uma marca de verão precisa de uma identidade visual simples para usar em redes sociais e materiais digitais.",
+      deliverable: "Entrega uma proposta de logótipo com paleta de cores, breve justificação visual e uma aplicação simples do logótipo.",
+      requirements: ["Usar uma paleta com cores associadas ao verão.", "Criar pelo menos três versões ou variações do símbolo.", "Garantir que o logótipo funciona em tamanho pequeno.", "Manter alinhamento e consistência entre texto, símbolo e cores."],
+      criteria: ["Adequação ao tema pedido", "Clareza visual", "Consistência gráfica", "Justificação das decisões"],
+      files: "PDF, PNG ou JPG com a proposta final e uma breve explicação."
+    },
+    "Tic Tac Hoe": {
+      context: "O objetivo é construir a lógica de um jogo do galo simples, funcional e fácil de testar.",
+      deliverable: "Entrega o código do jogo com validação de jogadas, deteção de vencedor e opção de reiniciar.",
+      requirements: ["Permitir alternar entre dois jogadores.", "Impedir jogadas em casas já ocupadas.", "Detetar vitória em linhas, colunas e diagonais.", "Mostrar empate quando não existir vencedor."],
+      criteria: ["Funcionamento da lógica", "Tratamento de erros", "Organização do código", "Clareza da explicação"],
+      files: "Link do projeto ou ficheiro ZIP/PDF com código e explicação."
+    },
+    "Bug Fix": {
+      context: "Existe um pequeno programa com erros de execução que precisa de ser corrigido e explicado.",
+      deliverable: "Entrega a versão corrigida e um resumo do erro encontrado, da solução aplicada e dos testes feitos.",
+      requirements: ["Identificar o erro principal.", "Corrigir sem criar novos problemas.", "Explicar porque a correção funciona.", "Mostrar pelo menos dois testes de validação."],
+      criteria: ["Correção técnica", "Capacidade de análise", "Qualidade da explicação", "Testes apresentados"],
+      files: "PDF ou Word com explicação e código corrigido."
+    },
+    "Portfolio UI": {
+      context: "Um estudante precisa de uma página de portefólio clara para apresentar projetos e competências.",
+      deliverable: "Entrega uma interface responsiva com secção de apresentação, projetos, competências e contacto.",
+      requirements: ["Criar hierarquia visual clara.", "Usar cartões de projeto organizados.", "Garantir boa leitura em mobile.", "Manter espaçamentos e botões consistentes."],
+      criteria: ["Usabilidade", "Responsividade", "Organização visual", "Qualidade da apresentação"],
+      files: "Link, PNG/JPG ou PDF com os ecrãs finais."
+    },
+    "SQL Dashboard": {
+      context: "Uma equipa precisa de consultar métricas simples a partir de uma base de dados.",
+      deliverable: "Entrega consultas SQL e uma explicação das métricas escolhidas para o dashboard.",
+      requirements: ["Criar consultas para métricas principais.", "Usar nomes claros para tabelas/campos.", "Explicar decisões de modelação.", "Apresentar resultados de forma legível."],
+      criteria: ["Correção das consultas", "Clareza dos dados", "Raciocínio técnico", "Organização da entrega"],
+      files: "PDF ou Word com queries, resultados e explicação."
+    },
+    "Count Even": {
+      context: "O desafio serve para avaliar lógica básica com arrays/listas e contagem de valores.",
+      deliverable: "Entrega uma função que conta números pares e uma pequena explicação do raciocínio.",
+      requirements: ["Percorrer a lista completa.", "Contar apenas números pares.", "Tratar listas vazias.", "Mostrar exemplos de entrada e saída."],
+      criteria: ["Correção da função", "Simplicidade da solução", "Casos de teste", "Explicação clara"],
+      files: "PDF, Word ou link com código e exemplos."
+    }
+  };
+  return briefs[challenge.title] || {
+    context: challenge.description || "Desafio publicado por um recrutador para avaliar uma competência prática.",
+    deliverable: challenge.description || "Entrega uma solução completa e explicada.",
+    requirements: challenge.criteria ? challenge.criteria.split(/[.;\n]/).map((item) => item.trim()).filter(Boolean) : challengeObjectives(challenge),
+    criteria: challenge.criteria ? challenge.criteria.split(/[.;\n]/).map((item) => item.trim()).filter(Boolean) : ["Cumprimento do objetivo", "Clareza da solução", "Qualidade da explicação"],
+    files: challenge.allowedFiles || "PDF, Word, PowerPoint, PNG, JPG ou link."
+  };
+}
+
 function selectedContact() {
   const fallback = currentRole() === "recruiter" ? "student-artur" : "recruiter-ocean";
   return contactProfiles[state.selectedContactId] || contactProfiles[fallback];
@@ -745,7 +799,8 @@ function renderRecruiterDashboard() {
   const stats = recruiterStats();
   const recruiterChallenges = recruiterChallengesFor(account);
   const recruiterSubmissions = recruiterSubmissionsFor(account);
-  const hasRecruiterData = Boolean(stats.challenges || stats.candidates || recruiterSubmissions.length);
+  const hasCandidateData = Boolean(stats.candidates || recruiterSubmissions.length);
+  const hasEvaluationData = recruiterSubmissions.some((item) => item.rating);
   return `
     <section class="screen">
       ${topbar("SkillQuest")}
@@ -767,14 +822,14 @@ function renderRecruiterDashboard() {
           <span class="eyebrow">Candidaturas</span>
           <h3 class="card-title">Ritmo semanal</h3>
           <div class="bar-chart" aria-label="Candidaturas por dia">
-            ${(hasRecruiterData ? [42, 64, 38, 82, 55, 76] : [0, 0, 0, 0, 0, 0]).map((value) => `<span style="height:${value}%"></span>`).join("")}
+            ${(hasCandidateData ? [42, 64, 38, 82, 55, 76] : [0, 0, 0, 0, 0, 0]).map((value) => `<span style="height:${value}%"></span>`).join("")}
           </div>
         </article>
         <article class="analytics-card">
           <span class="eyebrow">Qualidade</span>
-          <h3 class="card-title">${hasRecruiterData ? "4.8 média" : "Sem avaliações"}</h3>
-          <div class="score-ring" style="--score: ${hasRecruiterData ? 86 : 0}"><strong>${hasRecruiterData ? "86%" : "0%"}</strong></div>
-          <p class="score-caption">${hasRecruiterData ? "adequação das candidaturas" : "aparece após receber candidaturas"}</p>
+          <h3 class="card-title">${hasEvaluationData ? `${account?.recruiterRating || "4.8"} média` : "Sem avaliações"}</h3>
+          <div class="score-ring" style="--score: ${hasEvaluationData ? 86 : 0}"><strong>${hasEvaluationData ? "86%" : "0%"}</strong></div>
+          <p class="score-caption">${hasEvaluationData ? "adequação das candidaturas" : "aparece após avaliar candidaturas"}</p>
         </article>
       </div>
       <article class="pipeline-card">
@@ -1354,8 +1409,8 @@ function startActiveChallenge(challenge = selectedChallenge()) {
   account.activeChallenges.unshift({
     challengeId: challenge.id,
     title: challenge.title,
-    progress: 12,
-    copy: "Desafio iniciado. Lê os objetivos e prepara a submissão."
+    progress: 0,
+    copy: "Desafio iniciado. Lê o briefing, organiza os ficheiros e começa a preparar a submissão."
   });
 }
 
@@ -1724,6 +1779,7 @@ function renderChallenge() {
   }
   const challenge = selectedChallenge();
   const objectives = challengeObjectives(challenge);
+  const brief = challengeBrief(challenge);
   return `
     <section class="screen">
       ${topbar("SkillQuest", { back: "dashboard" })}
@@ -1742,10 +1798,24 @@ function renderChallenge() {
           <span class="pill">${icon("users", 16)} ${escapeHtml(challenge.people || 1)} pessoas</span>
         </div>
         <div class="empty-space"></div>
+        <article class="tip-card">${icon("info", 18)} <span>${escapeHtml(brief.context)}</span></article>
+        <div class="empty-space"></div>
+        <h3 class="card-title">O que tens de entregar</h3>
+        <p class="card-copy">${escapeHtml(brief.deliverable)}</p>
+        <div class="empty-space"></div>
         <h3 class="card-title">Objetivos</h3>
         ${objectives.map((objective) => `<div class="review-line">${icon("check")} <span>${escapeHtml(objective)}</span></div>`).join("")}
         <div class="empty-space"></div>
-        <article class="tip-card">${icon("info", 18)} <span>Critérios claros ajudam o recrutador a avaliar a tua entrega mais depressa.</span></article>
+        <h3 class="card-title">Requisitos obrigatórios</h3>
+        ${brief.requirements.map((requirement) => `<div class="review-line">${icon("check")} <span>${escapeHtml(requirement)}</span></div>`).join("")}
+        <div class="empty-space"></div>
+        <h3 class="card-title">Critérios de avaliação</h3>
+        <div class="skill-tags">${brief.criteria.map((criterion) => `<span class="skill-tag neutral">${escapeHtml(criterion)}</span>`).join("")}</div>
+        <div class="empty-space"></div>
+        <h3 class="card-title">Formato da submissão</h3>
+        <p class="card-copy">${escapeHtml(brief.files)}</p>
+        <div class="empty-space"></div>
+        <article class="tip-card">${icon("info", 18)} <span>Antes de submeter, confirma se todos os requisitos obrigatórios estão visíveis na tua entrega.</span></article>
       </div>
       <div class="empty-space"></div>
       <article class="progress-card">
@@ -1763,6 +1833,10 @@ function renderChallenge() {
 function renderWorkbench() {
   if (currentRole() === "recruiter") return renderChallenge();
   const challenge = selectedChallenge();
+  const account = activeAccount();
+  const activeChallenge = (account?.activeChallenges || []).find((item) => String(item.challengeId) === String(challenge.id));
+  const progress = Number(activeChallenge?.progress ?? 0);
+  const progressCopy = activeChallenge?.copy || "Desafio iniciado agora. O progresso começa a 0% até preparares e submeteres o trabalho.";
   return `
     <section class="screen">
       ${topbar("Trabalho", { back: "challenge" })}
@@ -1771,10 +1845,10 @@ function renderWorkbench() {
       <article class="progress-card">
         <div class="card-top">
           <h3 class="card-title">Progresso</h3>
-          <span class="pill">68%</span>
+          <span class="pill">${progress}%</span>
         </div>
-        <div class="progress-track"><div class="progress-fill" style="width: 68%"></div></div>
-        <p class="card-copy">Briefing lido, paleta definida e primeira proposta pronta.</p>
+        <div class="progress-track"><div class="progress-fill" style="width: ${progress}%"></div></div>
+        <p class="card-copy">${escapeHtml(progressCopy)}</p>
       </article>
       <div class="empty-space"></div>
       <button class="primary-btn" data-route="submitWork">${icon("upload")} Submeter trabalho</button>
