@@ -104,7 +104,8 @@ const areaOptions = [
   "Recursos Humanos",
   "Gestão de Projetos",
   "Cibersegurança",
-  "Data Science"
+  "Data Science",
+  "Outro"
 ];
 
 const contactProfiles = {
@@ -358,18 +359,6 @@ function recruiterSubmissionsFor(account = activeAccount()) {
 }
 
 function submissionItems() {
-  const fallback = {
-    id: "demo-submission",
-    challenge: "Design Logo",
-    title: "Proposta visual inicial",
-    name: "Artur Silva",
-    email: "artur@skillquest.pt",
-    text: "Submissão de exemplo para avaliação.",
-    fileName: "design-logo-proposta.pdf",
-    link: "https://portfolio.example/design-logo",
-    status: "Pendente",
-    submittedAt: "Hoje, 14:20"
-  };
   const account = activeAccount();
   if (currentRole() === "recruiter") return recruiterSubmissionsFor(account);
   return (state.submissions || []).filter((submission) => submission.email === account?.email);
@@ -386,11 +375,40 @@ function visibleNotifications() {
   if (currentRole() === "recruiter") {
     const recruiterNotes = [];
     const personalNotes = state.notifications.filter((note) => note.email === account?.email);
-    if (recruiterChallengesFor(account).length || recruiterSubmissionsFor(account).length) recruiterNotes.push(
-      { id: "r1", title: "Nova candidatura recebida", body: "Artur enviou uma entrega para Design Logo.", icon: "users", route: "recruiterSubmissions", unread: true },
-      { id: "r2", title: "Pergunta de aluno", body: "Uma dúvida aguarda resposta no chat.", icon: "chat", route: "chats", unread: true },
-      { id: "r3", title: "Desafio em revisão", body: "A API de Ranking tem candidaturas para analisar.", icon: "briefcase", route: "recruiterSubmissions", unread: false }
-    );
+    const recruiterSubmissions = recruiterSubmissionsFor(account);
+    const latestSubmission = recruiterSubmissions.at(-1);
+    const lastStudentMessage = [...(state.recruiterMessages || [])].reverse().find((message) => message.from === "student");
+    const reviewChallenge = recruiterChallengesFor(account).find((challenge) => String(challenge.status || "").toLowerCase().includes("revis"));
+    if (latestSubmission) {
+      recruiterNotes.push({
+        id: `submission-${latestSubmission.id}`,
+        title: "Nova candidatura recebida",
+        body: `${latestSubmission.name || "Um aluno"} enviou uma entrega para ${latestSubmission.challenge}.`,
+        icon: "users",
+        route: "recruiterSubmissions",
+        unread: true
+      });
+    }
+    if (lastStudentMessage) {
+      recruiterNotes.push({
+        id: `student-message-${lastStudentMessage.time || "latest"}`,
+        title: "Mensagem de aluno",
+        body: lastStudentMessage.text || "Uma dúvida aguarda resposta no chat.",
+        icon: "chat",
+        route: "chats",
+        unread: true
+      });
+    }
+    if (reviewChallenge) {
+      recruiterNotes.push({
+        id: `challenge-review-${reviewChallenge.id}`,
+        title: "Desafio em revisão",
+        body: `${reviewChallenge.title} tem candidaturas para analisar.`,
+        icon: "briefcase",
+        route: "recruiterSubmissions",
+        unread: false
+      });
+    }
     return [...personalNotes, ...recruiterNotes].map((note) => ({ ...note, unread: note.unread && !readIds.has(note.id) }));
   }
   return state.notifications
@@ -1347,22 +1365,39 @@ function renderEditProfile() {
 }
 
 function renderEvaluation() {
+  const account = activeAccount();
+  const evaluatedSubmissions = (state.submissions || []).filter((item) => item.email === account?.email && (item.feedback || item.rating));
+  const hasEvaluations = evaluatedSubmissions.length > 0;
   return `
     <section class="screen">
       ${topbar("Avaliação", { back: menuBack("menu") })}
       <h2 class="section-title">Avaliação de desafios</h2>
       <article class="insight-card">
         <span class="eyebrow">Resumo</span>
-        <h3 class="card-title">Feedback pronto para melhorar a próxima entrega.</h3>
-        <p class="card-copy">As avaliações mostram pontos fortes, requisitos em falta e a classificação recebida.</p>
+        <h3 class="card-title">${hasEvaluations ? "Feedback pronto para melhorar a próxima entrega." : "Ainda não recebeste avaliações."}</h3>
+        <p class="card-copy">${hasEvaluations ? "As avaliações mostram pontos fortes, requisitos em falta e a classificação recebida." : "Quando uma submissão for avaliada, o feedback aparece aqui."}</p>
       </article>
       <div class="empty-space"></div>
       <div class="card-list">
-        ${reviewCard("Design Logo", [["x", "Não cumpriu todos os requisitos de cor."], ["x", "Elementos gráficos desalinhados."]], 3)}
-        ${reviewCard("Bug Fix", [["x", "Tem alguns erros de execução."], ["check", "Comprova que percebe de Java."]], 4)}
+        ${hasEvaluations
+          ? evaluatedSubmissions.map(reviewSubmissionCard).join("")
+          : emptyState("Sem avaliações", "Submete um trabalho e aguarda feedback para veres detalhes nesta área.", "star", "dashboard", "Ver desafios")}
       </div>
     </section>
     ${bottomNav("dashboard")}
+  `;
+}
+
+function reviewSubmissionCard(item) {
+  const stars = Math.max(0, Math.min(5, Number(item.rating || 0)));
+  const feedback = item.feedback || item.status || "Feedback recebido.";
+  return `
+    <article class="review-card">
+      <h3 class="card-title">${escapeHtml(item.challenge)}</h3>
+      <div class="review-line">${icon("check", 18)}<span>${escapeHtml(feedback)}</span></div>
+      <div class="stars">${Array.from({ length: stars }, () => icon("star", 18)).join("")}</div>
+      <p class="card-copy">${stars ? `${stars}/5` : "Sem nota"} - Feedback recebido da empresa</p>
+    </article>
   `;
 }
 
